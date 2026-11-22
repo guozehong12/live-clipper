@@ -8,6 +8,21 @@ const { registerDesktopCapabilities } = require('../desktop-capabilities');
 const { createUpdateFlow } = require('../update-flow');
 const { createDataDirectoryActions, createRuntimeState } = require('../runtime-state');
 
+test('the unofficial build does not query or download official updates', async () => {
+  let queried = false;
+  const flow = createUpdateFlow({
+    app: { isPackaged: true, getVersion: () => '1.0.7' },
+    dialog: { showMessageBox: async () => ({ response: 0 }), showErrorBox() { throw new Error('unexpected'); } },
+    runtime: { canUseProjectFeatures: () => true },
+    getWindow: () => ({}),
+    getUpdater: () => { throw new Error('updater must not load'); },
+    https: { get() { queried = true; throw new Error('network must not start'); } },
+  });
+  const silent = await flow.checkForUpdates(false);
+  assert.equal(silent.code, 'unofficial_test_build');
+  assert.equal(queried, false);
+});
+
 test('known data directories resolve in their owning process and never create missing targets', async () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'venus-settings-'));
   const work = path.join(home, 'custom-work'); fs.mkdirSync(work);
@@ -39,11 +54,11 @@ function desktopHarness() {
   updater.quitAndInstall = () => install();
   const app = { getVersion: () => '1.0.2', isPackaged: true, quit() {} };
   const dialog = { showMessageBox: async (parent, options) => { messages.push(options); return nextDialog ? nextDialog(parent, options) : { response }; }, showErrorBox: (...args) => messages.push(args) };
-  const flow = createUpdateFlow({ app, dialog, runtime, getWindow: () => window,
+  const flow = createUpdateFlow({ app, dialog, runtime, getWindow: () => window, updatesEnabled: true,
     shell: { openExternal: async () => { throw new Error('private-browser-error'); } },
     getUpdater: () => updater, prepareForQuit: () => prepare(), markExiting: () => order.push('mark'),
     https: { get: (url, options, callback) => {
-      assert.equal(url, 'https://api.github.com/repos/dingshuxin353/live-clipper/releases/latest');
+      assert.equal(url, 'https://api.github.com/repos/guozehong12/live-clipper/releases/latest');
       assert.equal(options.timeout, 8000);
       const request = new EventEmitter(); request.destroy = () => {};
       queueMicrotask(() => { const result = new EventEmitter(); result.statusCode = 200; callback(result); result.emit('data', JSON.stringify({ tag_name: latest })); result.emit('end'); });

@@ -35,7 +35,7 @@ def test_default_workspace_root_uses_user_venus_on_macos(monkeypatch, tmp_path):
     monkeypatch.setattr(app_dirs.sys, "platform", "darwin")
     monkeypatch.setattr(app_dirs.Path, "home", lambda: tmp_path)
 
-    assert app_dirs.default_workspace_root(tmp_path / "app-home") == tmp_path / "Venus"
+    assert app_dirs.default_workspace_root(tmp_path / "app-home") == tmp_path / "VenusTest"
 
 
 def test_default_workspace_root_falls_back_inside_app_home(monkeypatch, tmp_path):

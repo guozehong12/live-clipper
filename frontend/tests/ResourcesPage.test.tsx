@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { ResourcesPage, type Resource } from "../src/ResourcesPage";
+import { ResourcesPage, validationMessage, type Resource } from "../src/ResourcesPage";
 import { installFetchMock, jsonResponse } from "./helpers";
 
 const resource: Resource = {
@@ -43,6 +43,12 @@ function mocks(extra = {}) {
   });
 }
 beforeEach(() => localStorage.clear());
+
+it("explains a missing built-in validation recording", () => {
+  expect(validationMessage("validation_audio_unavailable", "local_asr")).toBe(
+    "应用缺少可读取的内置验证音频，无法检查本机语音模型。已下载的模型文件已保留。",
+  );
+});
 
 it("restores non-secret draft fields without probing or remembering the password", async () => {
   const calls = mocks();

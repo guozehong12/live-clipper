@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- Package the built-in speech-check recording with the frozen backend. If that recording is missing or unreadable, model preparation reports `validation_audio_unavailable` and keeps the downloaded model files.
+
+### Changed
+
+- This fork builds unofficial VenusTest (`com.guozehong12.venustest`). Its default data directory is VenusTest, separate from the official Venus app. The test build does not sign, notarize, publish, or download official updates, and it does not copy official model files.
+
 ### Removed
 
 - Removed local HTTP routes left from the 0.3.x console that the app no longer calls: the global run list and run actions, confirmations, events, scheduler, review automation, service status and start, and the `/media/runs/...` clip path. Requests to these paths now return 404 instead of 410.

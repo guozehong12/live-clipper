@@ -80,10 +80,11 @@ const validationMessages: Record<string, string> = {
   analysis_output_invalid: "模型返回的分析结果不符合要求。",
   correction_output_invalid: "模型返回的文字校对结果不符合要求。",
   capability_validation_failed: "检查未通过，请检查模型配置和运行环境。",
+  validation_audio_unavailable: "应用缺少可读取的内置验证音频，无法检查本机语音模型。已下载的模型文件已保留。",
   model_not_installed: "模型尚未安装完整，请先准备模型。",
   ai_resource_unavailable: "Claude Code 暂时无法使用，请检查安装和登录状态。",
 };
-function validationMessage(code: string, kind?: Kind) {
+export function validationMessage(code: string, kind?: Kind) {
   const message = code ? validationMessages[code] || "检查未通过，请检查模型配置。" : "";
   return kind === "local_asr" ? message.replaceAll("API Key", "Hugging Face Token") : message;
 }

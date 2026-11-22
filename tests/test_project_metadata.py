@@ -37,13 +37,14 @@ def test_desktop_updater_provider_config_is_complete_and_secret_free():
 
     assert update_config == {
         "provider": "github",
-        "owner": "dingshuxin353",
+        "owner": "guozehong12",
         "repo": "live-clipper",
-        "updaterCacheDirName": "live-clipper-desktop-updater",
+        "updaterCacheDirName": "venustest-desktop-updater",
     }
     assert update_text.endswith("\n")
     assert "\r" not in update_text
-    assert update_config["updaterCacheDirName"] == f"{package['name']}-updater"
+    assert update_config["owner"] != "dingshuxin353"
+    assert update_config["updaterCacheDirName"] != f"{package['name']}-updater"
     lowered = update_text.lower()
     for forbidden in ("token", "secret", "password", "private", "${", "$(", "process.env"):
         assert forbidden not in lowered

@@ -745,10 +745,10 @@ def test_packaged_updater_compares_complete_configuration(tmp_path, monkeypatch,
     updater = tmp_path / 'candidate/mac-arm64/Venus.app/Contents/Resources/app-update.yml'
     updater.parent.mkdir(parents=True)
     # The signed builder output has the same four values, in this different order.
-    text = ('owner: dingshuxin353\nrepo: live-clipper\nprovider: github\n'
-            'updaterCacheDirName: live-clipper-desktop-updater\n')
+    text = ('owner: guozehong12\nrepo: live-clipper\nprovider: github\n'
+            'updaterCacheDirName: venustest-desktop-updater\n')
     if change == 'value':
-        text = text.replace('live-clipper-desktop-updater', 'different-updater')
+        text = text.replace('venustest-desktop-updater', 'different-updater')
     elif change == 'missing':
         text = text.replace('provider: github\n', '')
     elif change in ('unparsed', 'duplicate', 'extra'):
@@ -765,6 +765,22 @@ def test_packaged_updater_compares_complete_configuration(tmp_path, monkeypatch,
     expected = 'Reached backend bundle check' if change == 'reordered' else 'updater configuration'
     with pytest.raises(release.ReleaseError, match=expected):
         release.check_packages(tmp_path, tmp_path / 'candidate', {}, source, 'candidate', 'A' * 40)
+
+
+def test_packaged_privacy_allows_only_the_known_validation_audio(tmp_path):
+    app = tmp_path / "VenusTest.app"
+    sample = app / "Contents/Resources/backend/_internal/live_clipper/validation_audio.wav"
+    sample.parent.mkdir(parents=True)
+    sample.write_bytes(Path("src/live_clipper/validation_audio.wav").read_bytes())
+    release.check_packaged_privacy(app)
+    recording = sample.parent / "recording.wav"
+    recording.write_bytes(sample.read_bytes())
+    with pytest.raises(release.ReleaseError, match="Private/user asset"):
+        release.check_packaged_privacy(app)
+    recording.unlink()
+    sample.write_bytes(b"RIFFxxxxWAVE")
+    with pytest.raises(release.ReleaseError, match="Private/user asset"):
+        release.check_packaged_privacy(app)
 
 
 def test_anonymous_download_rejects_non_https_before_writing(tmp_path):
