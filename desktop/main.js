@@ -7,6 +7,7 @@ const { BackendClient, BackendError, redactText } = require("./backend-client");
 const { checkMediaTools } = require("./media-runtime");
 const { registerDesktopCapabilities } = require("./desktop-capabilities");
 const { createUpdateFlow } = require("./update-flow");
+const identity = require("./app-identity");
 const {
   appUrl,
   createBadgePoller,
@@ -33,8 +34,7 @@ const updates = createUpdateFlow({
 });
 const backendToken = require("crypto").randomBytes(16).toString("hex");
 
-const configuredHome = String(process.env.LIVE_CLIPPER_HOME || "").trim();
-const homeCandidate = configuredHome || path.join(app.getPath("appData"), "Venus");
+const homeCandidate = identity.desktopAppHome(process.env.LIVE_CLIPPER_HOME, app.getPath("appData"));
 appHome = resolveTrustedAppHome(homeCandidate);
 const electronHome = electronRuntimeHome(appHome);
 fs.mkdirSync(electronHome, { recursive: true, mode: 0o700 });
@@ -86,7 +86,7 @@ function startBackend(port) {
   backendProcess.on("exit", (code) => {
     backendProcess = null;
     if (!runtime.isQuitting()) {
-      dialog.showErrorBox("Venus", `Venus 后台服务已停止，请重新打开 Venus。退出代码：${code ?? "未知"}。`);
+      dialog.showErrorBox(identity.productName, `${identity.productName} 后台服务已停止，请重新打开 ${identity.productName}。退出代码：${code ?? "未知"}。`);
       runtime.beginQuit();
       badgePoller?.stop();
       exitingNow = true;
@@ -148,7 +148,7 @@ function showWindow(route = null) {
     height: 860,
     minWidth: 980,
     minHeight: 640,
-    title: "Venus",
+    title: identity.productName,
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 18, y: 18 },
     webPreferences: {
@@ -190,20 +190,20 @@ function createTray() {
     const icon = nativeImage.createFromPath(path.join(__dirname, "assets", "trayTemplate.png"));
     icon.setTemplateImage(true);
     tray = new Tray(icon);
-    tray.setToolTip("Venus");
+    tray.setToolTip(identity.productName);
   }
   const items = runtime.isRestricted()
     ? [
-      { label: "打开 Venus", click: () => showWindow("/studio") },
+      { label: `打开 ${identity.productName}`, click: () => showWindow("/studio") },
       { type: "separator" },
-      { label: "退出 Venus", click: () => app.quit() },
+      { label: `退出 ${identity.productName}`, click: () => app.quit() },
     ]
     : [
       { label: "打开工作室", click: () => showWindow("/studio") },
       { label: "查看项目", click: () => showWindow("/projects") },
       { label: "检查更新", click: () => updates.checkForUpdates(true) },
       { type: "separator" },
-      { label: "退出 Venus", click: () => app.quit() },
+      { label: `退出 ${identity.productName}`, click: () => app.quit() },
     ];
   tray.setContextMenu(Menu.buildFromTemplate(items));
 }
@@ -227,7 +227,7 @@ async function refreshDesktopCapabilities() {
     });
   }
   await badgePoller.start();
-  if (updateCheckTimer === null) {
+  if (identity.updatesEnabled && updateCheckTimer === null) {
     updateCheckTimer = setTimeout(() => {
       updateCheckTimer = null;
       void updates.checkForUpdates(false);
@@ -312,7 +312,7 @@ if (!app.requestSingleInstanceLock()) {
       });
       startBackend(backendPort);
       const startup = await backendClient.waitUntilReady({ isAlive: () => Boolean(backendProcess) });
-      if (!startup?.entry?.mode) throw new Error("无法读取启动状态，请重新打开 Venus。");
+      if (!startup?.entry?.mode) throw new Error(`无法读取启动状态，请重新打开 ${identity.productName}。`);
       runtime.setStartup(startup);
       await session.defaultSession.cookies.set({
         url: `http://127.0.0.1:${backendPort}`,
@@ -325,7 +325,7 @@ if (!app.requestSingleInstanceLock()) {
       await refreshDesktopCapabilities();
       showWindow("/studio");
     } catch (error) {
-      dialog.showErrorBox("Venus", `Venus 启动失败，请重新打开后重试。如仍失败，请联系开发者排查。${error instanceof BackendError || error.code === "media_tools_unavailable" ? `\n${error.message}` : ""}`);
+      dialog.showErrorBox(identity.productName, `${identity.productName} 启动失败，请重新打开后重试。如仍失败，请联系开发者排查。${error instanceof BackendError || error.code === "media_tools_unavailable" ? `\n${error.message}` : ""}`);
       runtime.beginQuit();
       badgePoller?.stop();
       await shutdownBackend();

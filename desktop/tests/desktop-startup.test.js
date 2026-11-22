@@ -9,7 +9,7 @@ const { createRequire } = require("node:module");
 const Module = require("node:module");
 const test = require("node:test");
 
-test("production startup shares page, tray and automatic updates and prepares the actual backend before installation", { timeout: 15000 }, async t => {
+test("production startup does not query or install official updates", { timeout: 15000 }, async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "venus-startup-"));
   const trace = path.join(root, "native-order.jsonl");
   let backend;
@@ -39,11 +39,11 @@ test("production startup shares page, tray and automatic updates and prepares th
     return name === "electron-updater" ? { autoUpdater: updater } : Reflect.apply(originalLoad, this, [name, ...args]);
   });
   const handlers = new Map(); const timers = new Set(); const windows = []; const trays = []; const prompts = [];
-  let ready; let response = 1;
+  let ready; let response = 1; let allowExit = false;
   const app = Object.assign(new EventEmitter(), {
     name: "Venus", isPackaged: false, getPath: () => root, setPath() {}, getVersion: () => "1.0.6",
     requestSingleInstanceLock: () => true, whenReady: () => ({ then: fn => { ready = fn; } }),
-    dock: { setBadge() {} }, exit: code => assert.fail(`Unexpected exit ${code}`),
+    dock: { setBadge() {} }, exit: code => { if (!(allowExit && code === 0)) assert.fail(`Unexpected exit ${code}`); },
   });
   class Window extends EventEmitter {
     constructor() {
@@ -94,24 +94,18 @@ test("production startup shares page, tray and automatic updates and prepares th
   assert.equal(handlers.size, 12);
   assert.equal(windows.length, 1);
   assert.equal(trays.length, 1);
+  assert.equal([...timers].some(timer => timer.delay === 5000), false);
   app.isPackaged = true;
   const event = { sender: windows[0].webContents, senderFrame: { url: windows[0].url } };
-  const automatic = [...timers].find(timer => timer.delay === 5000);
-  assert.ok(automatic);
-  timers.delete(automatic);
-  automatic.fn();
-  const page = handlers.get("lc:check-for-updates")(event);
-  const tray = trays[0].items.find(item => item.label === "检查更新").click();
-  assert.equal(page, tray);
-  assert.equal(checks, 1);
-  finishCheck({ updateInfo: { version: "1.0.6" } });
-  assert.deepEqual(await page, { ok: true });
-  assert.equal(prompts.length, 1);
-  response = 0;
-  updater.emit("update-downloaded");
-  await installation;
-  assert.deepEqual(fs.readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line)), ["stop", "term", "install"]);
-  assert.equal(trays[0].destroyed, true);
-  assert.equal(timers.size, 0);
+  const page = await handlers.get("lc:check-for-updates")(event);
+  const tray = await trays[0].items.find(item => item.label === "检查更新").click();
+  assert.equal(checks, 0);
+  assert.equal(page.code, "unofficial_test_build");
+  assert.equal(tray.code, "unofficial_test_build");
+  assert.match(page.message, /不会检查或下载官方更新/);
+  assert.equal(prompts.length, 2);
+  allowExit = true;
+  app.emit("before-quit", { preventDefault() {} });
+  await once(backend, "exit", { signal: AbortSignal.timeout(5000) });
   assert.equal(backend.exitCode, 0);
 });

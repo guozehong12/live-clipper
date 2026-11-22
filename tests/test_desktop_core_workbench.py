@@ -29,8 +29,10 @@ def test_desktop_starts_on_studio_and_keeps_deep_routes_inside_the_app():
 def test_tray_has_only_project_scoped_navigation_and_update_actions():
     main = (ROOT / "desktop" / "main.js").read_text(encoding="utf-8")
 
-    for label in ["打开工作室", "查看项目", "检查更新", "退出 Venus"]:
+    for label in ["打开工作室", "查看项目", "检查更新"]:
         assert f'label: "{label}"' in main
+    assert "label: `退出 ${identity.productName}`" in main
+    assert 'label: "退出 Venus"' not in main
     assert "立即扫描录播" not in main
     assert "/api/service/scan-now" not in main
 

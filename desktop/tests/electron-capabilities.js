@@ -50,7 +50,7 @@ app.whenReady().then(async () => {
     showMessageBox: async (parent, options) => { assert.equal(parent, currentWindow); messages.push(options); return { response }; },
     showErrorBox: (_, message) => assert.fail(message),
   };
-  const flow = createUpdateFlow({ app: appBoundary, dialog, shell: {}, runtime, getWindow: () => currentWindow,
+  const flow = createUpdateFlow({ app: appBoundary, dialog, shell: {}, runtime, getWindow: () => currentWindow, updatesEnabled: true,
     getUpdater: () => updater, prepareForQuit: async () => { effects.push("prepare"); return runtime.beginQuit(); }, markExiting: () => effects.push("mark") });
   dispose = registerDesktopCapabilities({
     ipcMain, runtime, appHome: root, getWindow: () => currentWindow, getPort: () => port,

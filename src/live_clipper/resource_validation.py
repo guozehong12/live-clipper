@@ -14,6 +14,7 @@ from .models import ClipCandidate, CorrectedTranscript, TranscriptWindow
 from .prompt_loader import load_prompt
 from .resource_activity import occupy
 from .resource_store import ResourceError, ResourceStore, encoded, fingerprint, normalize_proposal
+from .validation_audio import ValidationAudioUnavailable, open_validation_audio
 
 TEXT = '整理课程资料时，先按主题分组，再写出每组的一句话摘要。这样能更快找到需要的内容，也能检查有没有遗漏。'
 SENTENCE = {'start': 0.0, 'end': 20.0, 'text': TEXT}
@@ -75,11 +76,12 @@ def validate_asr(settings: Settings, *, local: bool) -> None:
         model_path = Path(settings.asr_model)
         if not model_path.is_absolute() or not model_path.is_dir():
             raise ResourceError('model_not_installed')
-    sample = Path(__file__).parent / 'validation_audio.wav'
-    if not sample.is_file():
-        raise ResourceError('validation_audio_unavailable')
-    with tempfile.TemporaryDirectory(prefix='venus-resource-check-') as directory:
-        result = transcribe_audio(sample, Path(directory) / 'transcript.json', settings)
+    try:
+        with open_validation_audio() as sample:
+            with tempfile.TemporaryDirectory(prefix='venus-resource-check-') as directory:
+                result = transcribe_audio(sample, Path(directory) / 'transcript.json', settings)
+    except ValidationAudioUnavailable as exc:
+        raise ResourceError(exc.code) from exc
     if not isinstance(result.get('segments'), list) or not transcript_sentences_from_raw(result):
         raise ResourceError('asr_timestamps_unavailable')
 

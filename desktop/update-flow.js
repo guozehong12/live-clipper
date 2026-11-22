@@ -1,6 +1,7 @@
 const nodeHttps = require("https");
+const identity = require("./app-identity");
 
-function createUpdateFlow({ app, dialog, shell, runtime, getWindow, prepareForQuit, markExiting, https = nodeHttps, getUpdater = () => require("electron-updater").autoUpdater }) {
+function createUpdateFlow({ app, dialog, shell, runtime, getWindow, prepareForQuit, markExiting, https = nodeHttps, getUpdater = () => require("electron-updater").autoUpdater, updatesEnabled = identity.updatesEnabled }) {
   let updater = null;
   let updateDownloaded = false;
   let updateCheckPromise = null;
@@ -14,14 +15,14 @@ function createUpdateFlow({ app, dialog, shell, runtime, getWindow, prepareForQu
       check: "暂时无法检查更新，请稍后重试。",
       download: "更新下载失败。请检查网络连接，再次检查更新以重试下载。",
       page: "无法打开下载页，请稍后重试。",
-      prepare: "暂时无法准备重启，更新尚未安装。请稍后重新打开 Venus 后检查更新。",
-      install: "暂时无法安装更新。后台处理已停止，请重新打开 Venus 后检查更新。",
+      prepare: `暂时无法准备重启，更新尚未安装。请稍后重新打开 ${identity.productName} 后检查更新。`,
+      install: `暂时无法安装更新。后台处理已停止，请重新打开 ${identity.productName} 后检查更新。`,
       restricted: "当前无法安装更新，请先完成首次设置或数据升级。",
     };
     return { ok: false, code, message: messages[code] };
   }
   function reportUpdateError(result) {
-    dialog.showErrorBox(result.code === "check" ? "检查更新" : "更新 Venus", result.message);
+    dialog.showErrorBox(result.code === "check" ? "检查更新" : `更新 ${identity.productName}`, result.message);
     return result;
   }
 
@@ -69,8 +70,8 @@ function createUpdateFlow({ app, dialog, shell, runtime, getWindow, prepareForQu
     } catch { return reportUpdateError(updateError("install")); }
   }
 
-  const UPDATE_RELEASES_API = "https://api.github.com/repos/dingshuxin353/live-clipper/releases/latest";
-  const UPDATE_RELEASES_PAGE = "https://github.com/dingshuxin353/live-clipper/releases/latest";
+  const UPDATE_RELEASES_API = "https://api.github.com/repos/guozehong12/live-clipper/releases/latest";
+  const UPDATE_RELEASES_PAGE = "https://github.com/guozehong12/live-clipper/releases/latest";
 
   function fetchLatestVersion() {
     return new Promise((resolve, reject) => {
@@ -118,6 +119,13 @@ function createUpdateFlow({ app, dialog, shell, runtime, getWindow, prepareForQu
   }
 
   function checkForUpdates(interactive) {
+    if (!updatesEnabled) {
+      const result = { ok: false, code: "unofficial_test_build", message: "这是独立测试版，不会检查或下载官方更新。" };
+      if (!interactive) return Promise.resolve(result);
+      return Promise.resolve(dialog.showMessageBox(getWindow(), {
+        type: "info", message: identity.productName, detail: result.message, buttons: ["好"],
+      })).then(() => result);
+    }
     if (!runtime.canUseProjectFeatures()) return Promise.resolve(updateError("restricted"));
     if (interactive && interactiveUpdatePromise) return interactiveUpdatePromise;
     if (!updateCheckPromise) updateCheckPromise = readUpdateInfo().finally(() => { updateCheckPromise = null; });
@@ -156,7 +164,7 @@ function createUpdateFlow({ app, dialog, shell, runtime, getWindow, prepareForQu
           });
           if (response === 0) { operation = "page"; await shell.openExternal(UPDATE_RELEASES_PAGE); }
         } else {
-          await dialog.showMessageBox(getWindow(), { type: "info", message: `发现新版本 ${result.latest}`, detail: "Venus 将自动下载更新，下载完成后会提示你重启安装。" });
+          await dialog.showMessageBox(getWindow(), { type: "info", message: `发现新版本 ${result.latest}`, detail: `${identity.productName} 将自动下载更新，下载完成后会提示你重启安装。` });
           if (updateFailure) return updateFailure;
         }
       } else {

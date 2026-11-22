@@ -30,6 +30,9 @@ def _valid_bundle(tmp_path: Path) -> Path:
         path = internal / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"runtime")
+    audio = internal / "live_clipper/validation_audio.wav"
+    audio.parent.mkdir(parents=True, exist_ok=True)
+    audio.write_bytes((ROOT / "src/live_clipper/validation_audio.wav").read_bytes())
     return bundle
 
 
@@ -58,6 +61,23 @@ def test_assert_backend_bundle_rejects_missing_runtime_assets(tmp_path: Path):
     issues = "\n".join(contract.validate_bundle(bundle))
     assert "required MLX runtime asset missing" in issues
     assert "mlx.metallib" in issues
+
+
+def test_assert_backend_bundle_rejects_missing_validation_audio(tmp_path: Path):
+    bundle = _valid_bundle(tmp_path)
+    (bundle / "_internal/live_clipper/validation_audio.wav").unlink()
+
+    issues = "\n".join(contract.validate_bundle(bundle))
+    assert "packaged validation audio missing" in issues
+
+
+def test_assert_backend_bundle_rejects_unreadable_validation_audio(tmp_path: Path):
+    bundle = _valid_bundle(tmp_path)
+    (bundle / "_internal/live_clipper/validation_audio.wav").write_bytes(b"not a wav")
+
+    issues = "\n".join(contract.validate_bundle(bundle))
+    assert "does not match the source sample" in issues
+    assert "not a WAV file" in issues
 
 
 def test_assert_backend_bundle_rejects_packaged_model_weights(tmp_path: Path):

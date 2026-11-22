@@ -1,9 +1,10 @@
-appId: com.dingshuxin.venus
-productName: Venus
+appId: com.guozehong12.venustest
+productName: VenusTest
 directories:
   output: dist-app
 files:
   - main.js
+  - app-identity.js
   - preload.js
   - backend-client.js
   - runtime-state.js
@@ -27,6 +28,9 @@ beforePack: ./scripts/prepare-media-tools.js
 afterPack: ./scripts/after-pack.js
 npmRebuild: false
 mac:
+  # Unsigned unofficial test build: do not select a Developer ID or notarize.
+  identity: null
+  notarize: false
   minimumSystemVersion: "14.0"
   target:
     - target: dmg
@@ -46,5 +50,5 @@ dmg:
   sign: true
 publish:
   provider: github
-  owner: dingshuxin353
+  owner: guozehong12
   repo: live-clipper

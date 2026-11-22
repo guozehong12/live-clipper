@@ -9,6 +9,7 @@ import platform
 import re
 import subprocess
 import sys
+import wave
 from email.parser import Parser
 from importlib import metadata
 from pathlib import Path
@@ -28,6 +29,8 @@ REQUIRED_FILES = (
     "mlx/lib/mlx.metallib",
     "mlx_whisper/assets/mel_filters.npz",
 )
+VALIDATION_AUDIO = "live_clipper/validation_audio.wav"
+SOURCE_VALIDATION_AUDIO = ROOT / "src/live_clipper/validation_audio.wav"
 FORBIDDEN_WEIGHT_PATTERNS = (
     "**/weights.npz",
     "**/*.safetensors",
@@ -132,6 +135,30 @@ def validate_installed() -> list[str]:
     return issues
 
 
+def validate_validation_audio(internal: Path) -> list[str]:
+    """The frozen backend must contain the exact readable probe sample."""
+    path = internal / VALIDATION_AUDIO
+    if not path.is_file():
+        return [f"packaged validation audio missing: {path}"]
+    try:
+        data = path.read_bytes()
+        expected = SOURCE_VALIDATION_AUDIO.read_bytes()
+    except OSError as exc:
+        return [f"packaged validation audio cannot be read: {path}: {exc}"]
+    issues: list[str] = []
+    if data != expected:
+        issues.append(f"packaged validation audio does not match the source sample: {path}")
+    if not (len(data) >= 44 and data[:4] == b"RIFF" and data[8:12] == b"WAVE"):
+        issues.append(f"packaged validation audio is not a WAV file: {path}")
+    try:
+        with wave.open(str(path)) as audio:
+            if audio.getnframes() <= 0 or audio.getsampwidth() <= 0 or audio.getframerate() <= 0:
+                issues.append(f"packaged validation audio has no samples: {path}")
+    except (OSError, wave.Error, EOFError) as exc:
+        issues.append(f"packaged validation audio cannot be read: {path}: {exc}")
+    return issues
+
+
 def validate_bundle(bundle: Path) -> list[str]:
     """Return human-readable contract violations for a PyInstaller onedir bundle."""
     if not bundle.is_dir():
@@ -140,6 +167,7 @@ def validate_bundle(bundle: Path) -> list[str]:
     if not internal.is_dir():
         return [f"PyInstaller _internal directory not found: {internal}"]
     issues = validate_runtime(internal)
+    issues.extend(validate_validation_audio(internal))
 
     weights = sorted(
         {

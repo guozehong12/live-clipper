@@ -1,4 +1,4 @@
 provider: github
-owner: dingshuxin353
+owner: guozehong12
 repo: live-clipper
-updaterCacheDirName: live-clipper-desktop-updater
+updaterCacheDirName: venustest-desktop-updater

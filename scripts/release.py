@@ -777,9 +777,17 @@ def app_facts(app, info, evidence, label, command=run):
 def check_packaged_privacy(app):
     resources = app / "Contents/Resources"
     forbidden_names = {".env", "live-clipper.toml", "projects.sqlite3", "service.json", "scheduler.json", "events.jsonl"}
+    allowed_wav = (ROOT / "src/live_clipper/validation_audio.wav").read_bytes()
     for path in resources.rglob("*"):
         if path.is_file():
-            require(path.name not in forbidden_names and path.suffix.lower() not in {".mp4", ".mov", ".mkv", ".wav", ".p12"}, f"Private/user asset in app: {path.name}")
+            if path.suffix.lower() == ".wav":
+                relative = path.relative_to(resources).as_posix()
+                require(
+                    relative.endswith("live_clipper/validation_audio.wav") and path.read_bytes() == allowed_wav,
+                    f"Private/user asset in app: {path.name}",
+                )
+                continue
+            require(path.name not in forbidden_names and path.suffix.lower() not in {".mp4", ".mov", ".mkv", ".p12"}, f"Private/user asset in app: {path.name}")
             if path.suffix.lower() in {".pem", ".key"}:
                 require(b"PRIVATE KEY-----" not in path.read_bytes(), "Private key in packaged resources")
 

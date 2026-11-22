@@ -32,6 +32,7 @@ MESSAGES = {
     'same_identity_confirmation_required': '请确认新 API Key 属于原供应商的同一账号和业务空间。',
     'workspace_required': '请填写 API Key 所属的业务空间 ID。', 'region_required': '请选择 API Key 所属地域。',
     'custom_endpoint_requires_custom_provider': '如需修改服务地址，请选择“自定义 OpenAI 兼容服务”。',
+    'validation_audio_unavailable': '应用缺少可读取的内置验证音频，无法检查本机语音模型。已下载的模型文件已保留。',
 }
 
 
@@ -102,7 +103,8 @@ class ResourceAPI:
                             store = ResourceStore(repo)
                             evidence = validate_resource(store, proposal, resource_id=resource['resource_id'], revision=resource['revision'], purposes=['asr'])
                             if evidence['results']['asr']['state'] != 'ready':
-                                return {'ok': False, 'message': '模型已下载，但检查未通过，文件已保留。', 'code': evidence['results']['asr'].get('code') or 'capability_validation_failed', 'diagnostic_id': task_id}
+                                code = evidence['results']['asr'].get('code') or 'capability_validation_failed'
+                                return {'ok': False, 'message': MESSAGES.get(code, '模型已下载，但检查未通过，文件已保留。'), 'code': code, 'diagnostic_id': task_id}
                             store.accept_local_preparation(resource['resource_id'], resource['revision'], evidence['validation_id'])
                             return {'ok': True, 'resource_id': resource['resource_id'], 'revision': resource['revision']}
                     except Exception as exc:

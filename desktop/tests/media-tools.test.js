@@ -93,19 +93,22 @@ test("a hung tool is killed within the five second runtime budget", (t) => {
 
 test("afterPack requires backend and both tools, restores mode, and runs checks", async (t) => {
   const root = temporary(t);
-  const resources = path.join(root, "Venus.app", "Contents", "Resources");
+  const { productName } = require("../app-identity");
+  const resources = path.join(root, `${productName}.app`, "Contents", "Resources");
   fs.mkdirSync(path.join(resources, "bin"), { recursive: true });
   fs.mkdirSync(path.join(resources, "backend"));
   for (const name of ["ffmpeg", "ffprobe"]) executable(resources, name);
-  await assert.rejects(afterPack({ appOutDir: root }), /live-clipper-backend.*missing/);
+  const context = { appOutDir: root, packager: { appInfo: { productFilename: productName } } };
+  await assert.rejects(afterPack({ appOutDir: root, packager: { appInfo: { productFilename: "Venus" } } }), /独立的 App 名称/);
+  await assert.rejects(afterPack(context), /live-clipper-backend.*missing/);
   fs.writeFileSync(path.join(resources, "backend", "live-clipper-backend"), "backend");
   fs.chmodSync(path.join(resources, "bin", "ffprobe"), 0o644);
-  await afterPack({ appOutDir: root });
+  await afterPack(context);
   assert.ok(fs.statSync(path.join(resources, "bin", "ffprobe")).mode & 0o111);
   executable(resources, "ffprobe", "exit 1");
-  await assert.rejects(afterPack({ appOutDir: root }), /execution failed/);
+  await assert.rejects(afterPack(context), /execution failed/);
   fs.unlinkSync(path.join(resources, "bin", "ffprobe"));
-  await assert.rejects(afterPack({ appOutDir: root }), /ffprobe.*missing/);
+  await assert.rejects(afterPack(context), /ffprobe.*missing/);
 });
 
 test("beforePack rejects unsupported targets before touching tools", async () => {
